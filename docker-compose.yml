@@ -70,12 +70,14 @@ services:
         -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
         -Dorg.slf4j.simpleLogger.log.com.zaxxer.hikari=INFO
         -Dorg.slf4j.simpleLogger.logFile=System.err
+      JAVA_TOOL_OPTIONS: "-Xbootclasspath/a:/opt/pymerlin/pymerlin-gateway.jar -javaagent:/opt/pymerlin/pymerlin-gateway.jar=25340"
       UNTRUE_PLAN_START: "2000-01-01T11:58:55.816Z"
     image: aerie_merlin
     ports: ["27183:27183", "5005:5005"]
     restart: always
     volumes:
       - aerie_file_store:/usr/src/app/merlin_file_store
+      - ./pymerlin/pymerlin-gateway.jar:/opt/pymerlin/pymerlin-gateway.jar:ro
   aerie_scheduler:
     build:
       context: ./scheduler-server
@@ -194,12 +196,14 @@ services:
         -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
         -Dorg.slf4j.simpleLogger.log.com.zaxxer.hikari=INFO
         -Dorg.slf4j.simpleLogger.logFile=System.err
+      JAVA_TOOL_OPTIONS: "-Xbootclasspath/a:/opt/pymerlin/pymerlin-gateway.jar -javaagent:/opt/pymerlin/pymerlin-gateway.jar=25333"
       UNTRUE_PLAN_START: "2000-01-01T11:58:55.816Z"
     image: "aerie_merlin_worker_1"
     ports: ["5007:5005", "27187:8080"]
     restart: always
     volumes:
       - aerie_file_store:/usr/src/app/merlin_file_store:ro
+      - ./pymerlin/pymerlin-gateway.jar:/opt/pymerlin/pymerlin-gateway.jar:ro
   aerie_merlin_worker_2:
     build:
       context: ./merlin-worker
@@ -218,12 +222,14 @@ services:
         -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
         -Dorg.slf4j.simpleLogger.log.com.zaxxer.hikari=INFO
         -Dorg.slf4j.simpleLogger.logFile=System.err
+      JAVA_TOOL_OPTIONS: "-Xbootclasspath/a:/opt/pymerlin/pymerlin-gateway.jar -javaagent:/opt/pymerlin/pymerlin-gateway.jar=25334"
       UNTRUE_PLAN_START: "2000-01-01T11:58:55.816Z"
     image: "aerie_merlin_worker_2"
     ports: ["5008:5005", "27188:8080"]
     restart: always
     volumes:
       - aerie_file_store:/usr/src/app/merlin_file_store:ro
+      - ./pymerlin/pymerlin-gateway.jar:/opt/pymerlin/pymerlin-gateway.jar:ro
   aerie_scheduler_worker_1:
     build:
       context: ./scheduler-worker
@@ -245,11 +251,13 @@ services:
         -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
         -Dorg.slf4j.simpleLogger.log.com.zaxxer.hikari=INFO
         -Dorg.slf4j.simpleLogger.logFile=System.err
+      JAVA_TOOL_OPTIONS: "-Xbootclasspath/a:/opt/pymerlin/pymerlin-gateway.jar -javaagent:/opt/pymerlin/pymerlin-gateway.jar=25335"
     image: "aerie_scheduler_worker_1"
     ports: ["5009:5005", "27189:8080"]
     restart: always
     volumes:
       - aerie_file_store:/usr/src/app/merlin_file_store:ro
+      - ./pymerlin/pymerlin-gateway.jar:/opt/pymerlin/pymerlin-gateway.jar:ro
   aerie_scheduler_worker_2:
     build:
       context: ./scheduler-worker
@@ -271,11 +279,13 @@ services:
         -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
         -Dorg.slf4j.simpleLogger.log.com.zaxxer.hikari=INFO
         -Dorg.slf4j.simpleLogger.logFile=System.err
+      JAVA_TOOL_OPTIONS: "-Xbootclasspath/a:/opt/pymerlin/pymerlin-gateway.jar -javaagent:/opt/pymerlin/pymerlin-gateway.jar=25336"
     image: "aerie_scheduler_worker_2"
     ports: ["5010:5005", "27190:8080"]
     restart: always
     volumes:
       - aerie_file_store:/usr/src/app/merlin_file_store:ro
+      - ./pymerlin/pymerlin-gateway.jar:/opt/pymerlin/pymerlin-gateway.jar:ro
   hasura:
     container_name: aerie_hasura
     depends_on: ["postgres"]
@@ -320,6 +330,51 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./deployment/postgres-init-db:/docker-entrypoint-initdb.d
+  pymerlin_sidecar_merlin:
+    container_name: pymerlin_sidecar_merlin
+    image: python:3.11-slim
+    depends_on: [ "aerie_merlin" ]
+    command: sh -c "pip uninstall pymerlin -y 2>/dev/null; pip install /pymerlin --quiet --no-cache-dir && pymerlin serve --model /models/model.py:Mission --name my-model --version 1.0.0 --host aerie_merlin --port 25340"
+    volumes:
+      - ../pymerlin:/pymerlin:ro
+      - ../pymerlin/demo:/models:ro
+    restart: always
+  pymerlin_sidecar_worker_1:
+    container_name: pymerlin_sidecar_worker_1
+    image: python:3.11-slim
+    depends_on: [ "aerie_merlin_worker_1" ]
+    command: sh -c "pip uninstall pymerlin -y 2>/dev/null; pip install /pymerlin --quiet --no-cache-dir && pymerlin serve --model /models/model.py:Mission --name my-model --version 1.0.0 --host aerie_merlin_worker_1 --port 25333"
+    volumes:
+      - ../pymerlin:/pymerlin:ro
+      - ../pymerlin/demo:/models:ro
+    restart: always
+  pymerlin_sidecar_worker_2:
+    container_name: pymerlin_sidecar_worker_2
+    image: python:3.11-slim
+    depends_on: [ "aerie_merlin_worker_2" ]
+    command: sh -c "pip uninstall pymerlin -y 2>/dev/null; pip install /pymerlin --quiet --no-cache-dir && pymerlin serve --model /models/model.py:Mission --name my-model --version 1.0.0 --host aerie_merlin_worker_2 --port 25334"
+    volumes:
+      - ../pymerlin:/pymerlin:ro
+      - ../pymerlin/demo:/models:ro
+    restart: always
+  pymerlin_sidecar_scheduler_worker_1:
+    container_name: pymerlin_sidecar_scheduler_worker_1
+    image: python:3.11-slim
+    depends_on: [ "aerie_scheduler_worker_1" ]
+    command: sh -c "pip uninstall pymerlin -y 2>/dev/null; pip install /pymerlin --quiet --no-cache-dir && pymerlin serve --model /models/model.py:Mission --name my-model --version 1.0.0 --host aerie_scheduler_worker_1 --port 25335"
+    volumes:
+      - ../pymerlin:/pymerlin:ro
+      - ../pymerlin/demo:/models:ro
+    restart: always
+  pymerlin_sidecar_scheduler_worker_2:
+    container_name: pymerlin_sidecar_scheduler_worker_2
+    image: python:3.11-slim
+    depends_on: [ "aerie_scheduler_worker_2" ]
+    command: sh -c "pip uninstall pymerlin -y 2>/dev/null; pip install /pymerlin --quiet --no-cache-dir && pymerlin serve --model /models/model.py:Mission --name my-model --version 1.0.0 --host aerie_scheduler_worker_2 --port 25336"
+    volumes:
+      - ../pymerlin:/pymerlin:ro
+      - ../pymerlin/demo:/models:ro
+    restart: always
 
 volumes:
   aerie_file_store:
