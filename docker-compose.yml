@@ -178,8 +178,8 @@ services:
     restart: always
   aerie_merlin_worker_1:
     build:
-      context: ./merlin-worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./merlin-worker/Dockerfile
     container_name: aerie_merlin_worker_1
     depends_on: ["postgres"]
     environment:
@@ -202,8 +202,8 @@ services:
       - aerie_file_store:/usr/src/app/merlin_file_store:ro
   aerie_merlin_worker_2:
     build:
-      context: ./merlin-worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./merlin-worker/Dockerfile
     container_name: aerie_merlin_worker_2
     depends_on: ["postgres"]
     environment:
